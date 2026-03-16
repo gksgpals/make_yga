@@ -1,0 +1,12 @@
+{
+  "source_directories": [
+    "."
+  ],
+  "search_path": [
+    "/Users/hanhyemin/Library/Python/3.9/lib/python/site-packages"
+  ],
+  "site_package_search_strategy": "all",
+  "exclude": [
+    "Library/.*"
+  ]
+}

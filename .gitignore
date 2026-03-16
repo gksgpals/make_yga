@@ -1,0 +1,16 @@
+.env
+.env.local
+.streamlit/secrets.toml
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.DS_Store
+logs/
+Library/
+*.pyc
+*.pyo
+*.pyd
+*.tmp
+*.swp
+*.swo
