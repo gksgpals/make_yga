@@ -133,6 +133,10 @@ def build_auth_secrets_toml(config: OIDCConfig) -> str:
             f'client_secret = "{config.client_secret}"',
             f'server_metadata_url = "{config.server_metadata_url}"',
             "",
+            f"[auth.{GOOGLE_PROVIDER_NAME}.client_kwargs]",
+            'scope = "openid email profile"',
+            'prompt = "select_account"',
+            "",
         ]
     )
 
