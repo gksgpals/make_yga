@@ -4,12 +4,28 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    startCommand: python3 bootstrap_streamlit_auth.py && streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.11
       - key: OPENAI_API_KEY
+        sync: false
+      - key: YGA_REQUIRE_LOGIN
+        value: "1"
+      - key: STREAMLIT_AUTH_REDIRECT_URI
+        sync: false
+      - key: STREAMLIT_AUTH_COOKIE_SECRET
+        sync: false
+      - key: STREAMLIT_AUTH_GOOGLE_CLIENT_ID
+        sync: false
+      - key: STREAMLIT_AUTH_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: STREAMLIT_AUTH_GOOGLE_SERVER_METADATA_URL
+        value: https://accounts.google.com/.well-known/openid-configuration
+      - key: YGA_ALLOWED_EMAILS
+        sync: false
+      - key: YGA_ALLOWED_EMAIL_DOMAINS
         sync: false
       - key: YGA_ENABLE_AI_PARSER
         value: "1"

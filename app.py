@@ -16,6 +16,7 @@ st: Any = importlib.import_module("streamlit")
 components: Any = importlib.import_module("streamlit.components.v1")
 _runtime_logging: Any = importlib.import_module("runtime_logging")
 get_logger = _runtime_logging.get_logger
+_auth_support: Any = importlib.import_module("auth_support")
 
 _slide_formatter: Any = importlib.import_module("slide_formatter")
 DEFAULT_CONTENT_FONT_SIZE_PT = _slide_formatter.DEFAULT_FONT_SIZE_PT
@@ -25,6 +26,13 @@ paginate_problems = _slide_formatter.paginate_problems
 parse_raw_details = _slide_formatter.parse_raw_details
 parse_raw = _slide_formatter.parse_raw
 set_content_font_size = _slide_formatter.set_content_font_size
+ALLOWED_EMAILS_ENV = _auth_support.ALLOWED_EMAILS_ENV
+ALLOWED_EMAIL_DOMAINS_ENV = _auth_support.ALLOWED_EMAIL_DOMAINS_ENV
+auth_is_required = _auth_support.auth_is_required
+ensure_streamlit_auth_secrets = _auth_support.ensure_streamlit_auth_secrets
+get_allowed_domains = _auth_support.get_allowed_domains
+get_allowed_emails = _auth_support.get_allowed_emails
+is_email_allowed = _auth_support.is_email_allowed
 
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 DEFAULT_DOWNLOAD_NAME = "class_slides.pptx"
@@ -32,6 +40,7 @@ TEMP_PPTX_NAME = DEFAULT_DOWNLOAD_NAME
 PREVIEW_TEXT_HEIGHT = 360
 BUILD_SECTION_LABEL = "BUILD"
 APPLY_INPUT_BUTTON_LABEL = "제출"
+LOGIN_BUTTON_LABEL = "Google로 로그인"
 DOWNLOAD_NAME_INPUT_KEY = "download_file_name_input_v4"
 HEADER_TITLE_INPUT_KEY = "header_title_input_v4"
 FONT_SIZE_INPUT_KEY = "content_font_size_input_v1"
@@ -366,6 +375,12 @@ class ParsedInput:
     parse_reason: str
 
 
+@dataclass(frozen=True)
+class AuthenticatedUser:
+    email: str
+    display_name: str
+
+
 def render_html(markup: str) -> None:
     st.markdown(markup, unsafe_allow_html=True)
 
@@ -385,6 +400,95 @@ def render_hero() -> None:
 def inject_scroll_effects() -> None:
     render_html(SCROLL_CHROME_HTML)
     components.html(SCROLL_SCRIPT, height=0)
+
+
+def read_streamlit_user_value(user: Any, key: str) -> str:
+    value = getattr(user, key, None)
+    if value not in (None, ""):
+        return str(value)
+    getter = getattr(user, "get", None)
+    if callable(getter):
+        mapped_value = getter(key)
+        if mapped_value not in (None, ""):
+            return str(mapped_value)
+    return ""
+
+
+def resolve_authenticated_user() -> Optional[AuthenticatedUser]:
+    user = getattr(st, "user", None)
+    if user is None or not bool(getattr(user, "is_logged_in", False)):
+        return None
+
+    email = read_streamlit_user_value(user, "email").strip().lower()
+    if not email:
+        return None
+
+    display_name = read_streamlit_user_value(user, "name").strip() or email
+    return AuthenticatedUser(email=email, display_name=display_name)
+
+
+def render_login_required_screen() -> None:
+    render_html(
+        """
+        <section class="hero-shell">
+          <p class="hero-subtitle">Private Access</p>
+          <h1 class="hero-title">허용된 Google 계정으로 로그인하세요</h1>
+          <p class="hero-subtitle">로그인한 사용자만 PPT 생성 기능을 사용할 수 있습니다.</p>
+        </section>
+        """
+    )
+    st.button(LOGIN_BUTTON_LABEL, type="primary", use_container_width=True, on_click=st.login)
+    st.stop()
+
+
+def render_unauthorized_screen(user: AuthenticatedUser) -> None:
+    render_html(
+        """
+        <section class="hero-shell">
+          <p class="hero-subtitle">Access Restricted</p>
+          <h1 class="hero-title">허용되지 않은 계정입니다</h1>
+          <p class="hero-subtitle">관리자가 허용 이메일 또는 도메인에 추가해야 접근할 수 있습니다.</p>
+        </section>
+        """
+    )
+    st.error(f"현재 로그인 계정: {user.email}")
+    st.caption(
+        f"허용 계정은 `{ALLOWED_EMAILS_ENV}` 또는 `{ALLOWED_EMAIL_DOMAINS_ENV}` 환경변수로 관리합니다."
+    )
+    st.button("다른 계정으로 다시 로그인", use_container_width=True, on_click=st.logout)
+    st.stop()
+
+
+def render_authenticated_user_bar(user: AuthenticatedUser) -> None:
+    info_col, action_col = st.columns([5, 1])
+    with info_col:
+        st.caption(f"로그인 사용자: {user.display_name} ({user.email})")
+    with action_col:
+        st.button("로그아웃", use_container_width=True, on_click=st.logout)
+
+
+def enforce_login_if_configured() -> Optional[AuthenticatedUser]:
+    if not auth_is_required():
+        return None
+
+    try:
+        ensure_streamlit_auth_secrets(Path(__file__).resolve().parent)
+    except ValueError as exc:
+        st.error(f"로그인 설정 오류: {exc}")
+        st.stop()
+
+    user = resolve_authenticated_user()
+    if user is None:
+        render_login_required_screen()
+        return None
+
+    allowed_emails = get_allowed_emails()
+    allowed_domains = get_allowed_domains()
+    if not is_email_allowed(user.email, allowed_emails, allowed_domains):
+        render_unauthorized_screen(user)
+        return None
+
+    return user
 
 
 def create_output(problems: list[Problem], header_title: str, content_font_size_pt: int) -> bytes:
@@ -729,6 +833,10 @@ def main() -> None:
     set_content_font_size(current_content_font_size())
     inject_ui_theme()
     inject_scroll_effects()
+
+    authenticated_user = enforce_login_if_configured()
+    if authenticated_user is not None:
+        render_authenticated_user_bar(authenticated_user)
 
     render_hero()
     render_controls()

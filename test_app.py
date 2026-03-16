@@ -91,6 +91,23 @@ class AppInputFlowTest(unittest.TestCase):
 
             self.assertTrue(app.generated_output_is_stale("sample text"))
 
+    def test_resolve_authenticated_user_returns_none_when_logged_out(self) -> None:
+        with patch.object(app.st, "user", SimpleNamespace(is_logged_in=False)):
+            self.assertIsNone(app.resolve_authenticated_user())
+
+    def test_resolve_authenticated_user_reads_email_and_name(self) -> None:
+        with patch.object(
+            app.st,
+            "user",
+            SimpleNamespace(is_logged_in=True, email="teacher@example.com", name="Teacher Kim"),
+        ):
+            user = app.resolve_authenticated_user()
+
+        self.assertIsNotNone(user)
+        assert user is not None
+        self.assertEqual(user.email, "teacher@example.com")
+        self.assertEqual(user.display_name, "Teacher Kim")
+
 
 if __name__ == "__main__":
     unittest.main()
