@@ -69,6 +69,7 @@ class AuthSupportTest(unittest.TestCase):
             contents = secrets_path.read_text()
 
         self.assertIn('[auth]', contents)
+        self.assertIn('[auth.google]', contents)
         self.assertIn('redirect_uri = "http://localhost:8501/oauth2callback"', contents)
         self.assertIn('client_id = "client-id"', contents)
 

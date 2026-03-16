@@ -32,6 +32,7 @@ auth_is_required = _auth_support.auth_is_required
 ensure_streamlit_auth_secrets = _auth_support.ensure_streamlit_auth_secrets
 get_allowed_domains = _auth_support.get_allowed_domains
 get_allowed_emails = _auth_support.get_allowed_emails
+GOOGLE_PROVIDER_NAME = _auth_support.GOOGLE_PROVIDER_NAME
 is_email_allowed = _auth_support.is_email_allowed
 
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -437,7 +438,8 @@ def render_login_required_screen() -> None:
         </section>
         """
     )
-    st.button(LOGIN_BUTTON_LABEL, type="primary", use_container_width=True, on_click=st.login)
+    if st.button(LOGIN_BUTTON_LABEL, type="primary", use_container_width=True):
+        st.login(GOOGLE_PROVIDER_NAME)
     st.stop()
 
 
@@ -455,7 +457,8 @@ def render_unauthorized_screen(user: AuthenticatedUser) -> None:
     st.caption(
         f"허용 계정은 `{ALLOWED_EMAILS_ENV}` 또는 `{ALLOWED_EMAIL_DOMAINS_ENV}` 환경변수로 관리합니다."
     )
-    st.button("다른 계정으로 다시 로그인", use_container_width=True, on_click=st.logout)
+    if st.button("다른 계정으로 다시 로그인", use_container_width=True):
+        st.logout()
     st.stop()
 
 
@@ -464,7 +467,8 @@ def render_authenticated_user_bar(user: AuthenticatedUser) -> None:
     with info_col:
         st.caption(f"로그인 사용자: {user.display_name} ({user.email})")
     with action_col:
-        st.button("로그아웃", use_container_width=True, on_click=st.logout)
+        if st.button("로그아웃", use_container_width=True):
+            st.logout()
 
 
 def enforce_login_if_configured() -> Optional[AuthenticatedUser]:

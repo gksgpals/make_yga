@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_GOOGLE_SERVER_METADATA_URL = "https://accounts.google.com/.well-known/openid-configuration"
+GOOGLE_PROVIDER_NAME = "google"
 AUTH_REQUIRED_ENV = "YGA_REQUIRE_LOGIN"
 ALLOWED_EMAILS_ENV = "YGA_ALLOWED_EMAILS"
 ALLOWED_EMAIL_DOMAINS_ENV = "YGA_ALLOWED_EMAIL_DOMAINS"
@@ -126,6 +127,8 @@ def build_auth_secrets_toml(config: OIDCConfig) -> str:
             "[auth]",
             f'redirect_uri = "{config.redirect_uri}"',
             f'cookie_secret = "{config.cookie_secret}"',
+            "",
+            f"[auth.{GOOGLE_PROVIDER_NAME}]",
             f'client_id = "{config.client_id}"',
             f'client_secret = "{config.client_secret}"',
             f'server_metadata_url = "{config.server_metadata_url}"',
